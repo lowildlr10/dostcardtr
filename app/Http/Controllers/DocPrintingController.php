@@ -30,8 +30,15 @@ class DocPrintingController extends Controller
                 //dd([$key, $previewToggle, $paperType, $dateFrom, $dateTo]);
 
                 $pageDimension = [$paper->width, $paper->height];
-                $data = $this->getDailyTimeRecord_Data($key, $dateFrom, $dateTo);
-                $this->printDTR($data, $documentType, $pageDimension, $previewToggle);
+                $userDat = User::where('bio_id', $key)->first();
+
+                if ($userDat) {
+                    $data = $this->getDailyTimeRecord_Data($userDat, $dateFrom, $dateTo);
+                    $this->printDTR($data, $documentType, $pageDimension, $previewToggle);
+                } else {
+                    return 'Employee is not registered in the system.';
+                }
+
                 break;
 
             default:
@@ -143,11 +150,10 @@ class DocPrintingController extends Controller
                          'm_list_date' => $mListDateArray];
     }
 
-    private function getDailyTimeRecord_Data($userID, $dateFrom, $dateTo) {
+    private function getDailyTimeRecord_Data($userDat, $dateFrom, $dateTo) {
         $dateRange = $this->getDateRange_Array($dateFrom, $dateTo);
-        $biometrics = $this->getBiometrics_Range_Data($userID,
-                                                      $dateRange->date_from->format('Y-m-d'),
-                                                      $dateRange->date_to->format('Y-m-d'));
+        $biometrics = $this->getBiometrics_Range_Data(
+            $userDat->bio_id,  $dateRange->date_from->format('Y-m-d'),  $dateRange->date_to->format('Y-m-d'));
         $dateArray = [];
 
         foreach ($dateRange->date_range as $date) {
@@ -157,7 +163,8 @@ class DocPrintingController extends Controller
 
         return (object) ['list_date' => $dateArray,
                          'dtr' => $biometrics,
-                         'user_id' => $userID];
+                         'bio_id' => $userDat->bio_id,
+                         'user_id' => $userDat->id];
     }
 
     private function setDocumentInfo($pdf, $docTitle, $docCreator = "DOST-CAR",
@@ -184,7 +191,7 @@ class DocPrintingController extends Controller
     private function printDTR($data, $documentType, $pageDimension, $previewToggle) {
         $pdf = new PDF('P', 'mm', $pageDimension);
         $pdf->setHeaderLR(false, false);
-        $docTitle = $documentType . "_" . $data->user_id;
+        $docTitle = $documentType . "_" . $data->bio_id;
         $docCreator = "DOST-CAR";
         $docAuthor = "DOST-CAR";
         $docSubject = "DTR";
